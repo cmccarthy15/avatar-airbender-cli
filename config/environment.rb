@@ -7,5 +7,7 @@ ActiveRecord::Base.establish_connection(
 )
 
 ActiveRecord::Base.logger = Logger.new(STDOUT)
+# Comment out line above and uncomment out line below to remove logger when presenting
+# ActiveRecord::Base.logger =  nil
 
 require_all 'app'
