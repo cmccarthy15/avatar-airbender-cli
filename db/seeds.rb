@@ -23,42 +23,67 @@ puts "Seeded #{Nation.all.count} nations"
 
 
 def create_character_and_associations(character)
-    new_char = Character.create({ 
-        api_id: character["_id"], 
-        name: character["name"],
-        photo_url: character["photoUrl"],
-        is_avatar: false # should update to be dynamic
-    })
-    affiliate_nations = Nation.all.filter{ |nat| character["affiliation"].include?(nat.shorthand)}
-    affiliate_nations.each{ |nation| Affiliation.create(character: new_char, nation: nation)}
+    target_name = character["name"].include?("(") ? character["name"].split[0] : character["name"]
+    
+    new_char = Character.find_by(name: target_name) ? Character.find_by(name: target_name) : Character.create({ 
+            api_id: character["_id"], 
+            name: target_name,
+            photo_url: character["photoUrl"],
+            is_avatar: false # should update to be dynamic
+        })
+    
+    create_nation_affiliations(character, new_char)
+    create_enemies(character, new_char)
+    create_allies(character, new_char)
+end
 
+def create_nation_affiliations(character, new_char)
+    affiliate_nations = Nation.all.filter{ |nat| character["affiliation"] ? character["affiliation"].include?(nat.shorthand) : false }
+    affiliate_nations.each{ |nation| Affiliation.find_or_create_by(character: new_char, nation: nation)}
+end
+
+## do these in a second loop and smarter so there is no chance of duplicates
+def create_enemies(character, new_char)
     character["enemies"].each do |enemy_name| 
         enemy_character = Character.find_by(name: enemy_name)
         if enemy_character
-            Relationship.find_or_create_by(character_one_id: new_char.id, character_two_id: enemy_character.id, are_enemies: true, are_allies: false)
+            if Relationship.find_by(character_one_id: new_char.id, character_two_id: enemy_character.id)
+                Relationship.find_by(character_one_id: new_char.id, character_two_id: enemy_character.id).update(are_enemies: true, are_allies: false)
+            else
+                Relationship.create(character_one_id: new_char.id, character_two_id: enemy_character.id, are_enemies: true, are_allies: false)
+            end
         end
     end
+end
+
+def create_allies(character, new_char)
     character["allies"].each do |ally_name| 
         ally_character = Character.find_by(name: ally_name)
         if ally_character
-            Relationship.find_or_create_by(character_one_id: new_char.id, character_two_id: ally_character.id, are_enemies: false, are_allies: true)
+            if Relationship.find_by(character_one_id: new_char.id, character_two_id: ally_character.id)
+                Relationship.find_by(character_one_id: new_char.id, character_two_id: ally_character.id).update(are_enemies: false, are_allies: true)
+            else
+                Relationship.create(character_one_id: new_char.id, character_two_id: ally_character.id, are_enemies: false, are_allies: true)
+            end
         end
     end
 end
 
-characters =  RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?perPage=10'
+characters =  RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?perPage=600'
 parsed_characters = JSON.parse(characters)
 # need to deal with multiple diff versions of characters
 
-aang = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=aang')[0]
-azula = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=azula')[1]
-appa = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=appa')[0]
-zuko = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=zuko')[2]
+# aangs = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=aang')
+# azula0 = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=azula')[0]
+# azula1 = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=azula')[1]
+# azula2 = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=azula')[2]
+# appa = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=appa')[0]
+# zukos = JSON.parse(RestClient.get 'https://last-airbender-api.herokuapp.com/api/v1/characters?name=zuko')
 
-binding.pry
 parsed_characters.each do |character|
-    
+    create_character_and_associations(character)
 end
+binding.pry
 
 
 
