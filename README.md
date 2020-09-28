@@ -1,5 +1,8 @@
 # Avatar Airbender CLI
 
+Welcome to the Avatar Airbender CLI where you get to live as whatever Avatar you think was the best
+Kyoshi was awesome. 
+
 ## Set Up
 Clone to your local machine and run `bundle install`. Then run `rake db:migrate`.
 Run the application via `ruby bin/run.rb` 
